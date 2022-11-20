@@ -21,27 +21,28 @@
 
 <body>
     <div style="text-align: center;">
-        <h3>Humidity Graph</h3>
+        <h3>Humidity/Temperature Graph</h3>
         <button class="btn btn-outline-success" onclick="plotcharts(36)">Plot 6h</button>
         <button class="btn btn-outline-success" onclick="plotcharts(72)">Plot 12h</button>
         <button class="btn btn-outline-success" onclick="plotcharts(144)">Plot 24h</button>
         <button class="btn btn-outline-success" onclick="plotcharts(288)">Plot 48h</button>
     </div>
 
-    <div class="row" style="width:2560px; pointer-events: none;">
-        <div class="col-md-6">
-            <canvas id="linechart"></canvas>
+    <div class="row" style="width:2560px; pointer-events: none; margin-left:100px;">
+    <div class="col-md-6">
+            <canvas id="humidity-chart"></canvas>
+            <canvas id="temperature-chart"></canvas>
         </div>
-
     </div>
 </body>
 
 
 <script type="text/javascript">
     function plotcharts(timespan) {
-        let apiUrl = 'https://sheetdb.io/api/v1/9fvjjip081wi5';
+        let apiUrl = 'URL';
         let time = []
         let humidity = [];
+        let temperature = [];
 
         fetch(apiUrl).then(response => {
             return response.json();
@@ -51,21 +52,31 @@
 
             for (let i = 0; i < slicedReversedData.length; i++) {
                 time.push(slicedReversedData[i]['Time']);
+                t = slicedReversedData[i]['Temperature']
+                t2 = t.replace("C", "")
+                temp = t2.replace(",",".")
+
                 h = slicedReversedData[i]['Humidity']
                 f = h.replace(",",".")
                 humidity.push(parseFloat(f));
+                temperature.push(parseFloat(temp))
             }
 
-            dataset = addData('Humidity', humidity, 'green', 'black');
+            const maxTemp = temperature.reduce((a, b) => Math.max(a, b), -Infinity);
+            const maxHumidity = humidity.reduce((a, b) => Math.max(a, b), -Infinity);
+            const minTemp = Math.min(...temperature);
+            const minHumidity = Math.min(...humidity);
 
-            drawchart(dataset, time, 'line');
+            dataset = addData('Humidity', humidity, 'green', 'black');
+            dataset2 = addData('Temperature', temperature, 'red', 'black');
+
+            drawHumidityChart(dataset, time, 'humidity','line', maxHumidity, minHumidity);
+            drawTemperatureChart(dataset2, time, 'temperature','line', maxTemp, minTemp);
 
         }).catch(err => {
             console.log(err);
         });
-
     }
-
 
     function addData(title, Data, bgcolor, bordercolor) {
         return [{
@@ -78,10 +89,10 @@
     }
 
 
-    function drawchart(dataset, Labels, type) {
-        const ctx = document.getElementById(type + 'chart').getContext('2d');
+    function drawHumidityChart(dataset, Labels, type, chartType, maxHumdidity, minHumidity) {
+        const ctx = document.getElementById(type + '-chart').getContext('2d');
         const myChart = new Chart(ctx, {
-            type: type,
+            type: chartType,
             data: {
                 labels: Labels,
                 datasets: dataset
@@ -90,7 +101,33 @@
                 scales: {
                     yAxes: [{
                         ticks: {
-                            beginAtZero: false
+                            beginAtZero: false,
+                            max: maxHumdidity+0.5,
+                            min: minHumidity-0.5,
+                            stepSize: 0.1
+                        }
+                    }]
+                }
+            }
+        });
+    }
+
+    function drawTemperatureChart(dataset, Labels, type, chartType, maxTemp, minTemp) {
+        const ctx = document.getElementById(type + '-chart').getContext('2d');
+        const myChart = new Chart(ctx, {
+            type: chartType,
+            data: {
+                labels: Labels,
+                datasets: dataset
+            },
+            options: {
+                scales: {
+                    yAxes: [{
+                        ticks: {
+                            beginAtZero: false,
+                            max: maxTemp+0.5,
+                            min: minTemp-0.5,
+                            stepSize: 1
                         }
                     }]
                 }
