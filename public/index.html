@@ -22,10 +22,11 @@
 <body>
     <div style="text-align: center;">
         <h3>Humidity/Temperature Graph</h3>
-        <button class="btn btn-outline-success" onclick="plotcharts(36)">Plot 6h</button>
-        <button class="btn btn-outline-success" onclick="plotcharts(72)">Plot 12h</button>
-        <button class="btn btn-outline-success" onclick="plotcharts(144)">Plot 24h</button>
-        <button class="btn btn-outline-success" onclick="plotcharts(288)">Plot 48h</button>
+        <button class="btn btn-outline-success" onclick="plotcharts(36, false)">Plot 6h</button>
+        <button class="btn btn-outline-success" onclick="plotcharts(72, false)">Plot 12h</button>
+        <button class="btn btn-outline-success" onclick="plotcharts(144, false)">Plot 24h</button>
+        <button class="btn btn-outline-success" onclick="plotcharts(288, false)">Plot 48h</button>
+        <button class="btn btn-outline-success" onclick="plotcharts(288, true)">Plot infinity</button>
     </div>
 
     <div class="row" style="width:2560px; pointer-events: none; margin-left:100px;">
@@ -38,7 +39,7 @@
 
 
 <script type="text/javascript">
-    function plotcharts(timespan) {
+    function plotcharts(timespan, infinity) {
         let apiUrl = 'URL';
         let time = []
         let humidity = [];
@@ -47,11 +48,22 @@
         fetch(apiUrl).then(response => {
             return response.json();
         }).then(data => {
-            const slicedData = data.slice(0, timespan); //one day
-            const slicedReversedData = slicedData.reverse()
+            let slicedData;
+            if(infinity){
+                slicedData = data;
+            }else{
+                slicedData = data.slice(0, timespan);
+            }
 
+            const slicedReversedData = slicedData.reverse()
             for (let i = 0; i < slicedReversedData.length; i++) {
-                time.push(slicedReversedData[i]['Time']);
+                if(infinity){
+                    time.push(slicedReversedData[i]['Date']);
+                }
+                else{
+                    time.push(slicedReversedData[i]['Time']);
+                }
+
                 t = slicedReversedData[i]['Temperature']
                 t2 = t.replace("C", "")
                 temp = t2.replace(",",".")
@@ -67,7 +79,7 @@
             const minTemp = Math.min(...temperature);
             const minHumidity = Math.min(...humidity);
 
-            dataset = addData('Humidity', humidity, 'green', 'black');
+            dataset = addData('Humidity', humidity, 'blue', 'black');
             dataset2 = addData('Temperature', temperature, 'red', 'black');
 
             drawHumidityChart(dataset, time, 'humidity','line', maxHumidity, minHumidity);
@@ -84,7 +96,9 @@
             data: Data,
             backgroundColor: bgcolor,
             borderColor: bordercolor,
-            borderWidth: 1.5
+            borderWidth: 1,
+            pointRadius: 1,
+            pointHoverRadius: 1
         }];
     }
 
@@ -125,9 +139,9 @@
                     yAxes: [{
                         ticks: {
                             beginAtZero: false,
-                            max: maxTemp+0.5,
+                            max: maxTemp+1,
                             min: minTemp-0.5,
-                            stepSize: 1
+                            stepSize: 0.5
                         }
                     }]
                 }
