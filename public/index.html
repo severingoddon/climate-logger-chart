@@ -20,74 +20,88 @@
 </head>
 
 <body>
-    <div style="text-align: center;">
-        <h3>Humidity/Temperature Graph</h3>
-        <button class="btn btn-outline-success" onclick="plotcharts(36, false)">Plot 6h</button>
-        <button class="btn btn-outline-success" onclick="plotcharts(72, false)">Plot 12h</button>
-        <button class="btn btn-outline-success" onclick="plotcharts(144, false)">Plot 24h</button>
-        <button class="btn btn-outline-success" onclick="plotcharts(288, false)">Plot 48h</button>
-        <button class="btn btn-outline-success" onclick="plotcharts(288, true)">Plot infinity</button>
-    </div>
+<div style="text-align: center;">
+    <h3>Humidity/Temperature Graph</h3>
+    <button class="btn btn-outline-success" onclick="loadData(36, false)">Plot 6h</button>
+    <button class="btn btn-outline-success" onclick="loadData(72, false)">Plot 12h</button>
+    <button class="btn btn-outline-success" onclick="loadData(144, false)">Plot 24h</button>
+    <button class="btn btn-outline-success" onclick="loadData(288, false)">Plot 48h</button>
+    <button class="btn btn-outline-success" onclick="loadData(288, true)">Plot infinity</button>
+</div>
 
-    <div class="row" style="width:2560px; pointer-events: none; margin-left:100px;">
+<div class="row" style="width:2560px; pointer-events: none; margin-left:100px;">
     <div class="col-md-6">
-            <canvas id="humidity-chart"></canvas>
-            <canvas id="temperature-chart"></canvas>
-        </div>
+        <canvas id="humidity-chart"></canvas>
+        <canvas id="temperature-chart"></canvas>
     </div>
+</div>
 </body>
 
-
 <script type="text/javascript">
-    function plotcharts(timespan, infinity) {
-        let apiUrl = 'URL';
+    function loadData(timespan, infinity) {
+        const sheetId = '1iZZWYpiYINLSuc8bKwiJ8gjeohrBkG9kWqANZCjcs3M';
+        const base = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?`;
+        const sheetName = 'climate-table';
+        const query = encodeURIComponent('Select *')
+        const url = `${base}&sheet=${sheetName}&tq=${query}`
+        const data = []
+        fetch(url)
+            .then(res => res.text())
+            .then(rep => {
+                const jsonData = JSON.parse(rep.substring(47).slice(0, -2));
+                const colz = [];
+                jsonData.table.cols.forEach((heading) => {
+                    if (heading.label) {
+                        let column = heading.label;
+                        colz.push(column);
+                    }
+                })
+                jsonData.table.rows.forEach((rowData) => {
+                    const row = {};
+                    colz.forEach((ele, ind) => {
+                        row[ele] = (rowData.c[ind] != null) ? rowData.c[ind].v : '';
+                    })
+                    data.push(row);
+                })
+                processData(data, timespan, infinity)
+            })
+    }
+
+    function processData(data, timespan, infinity){
         let time = []
         let humidity = [];
         let temperature = [];
+        let slicedData;
+        if(infinity){
+            slicedData = data;
+        }else{
+            slicedData = data.slice(0, timespan);
+        }
 
-        fetch(apiUrl).then(response => {
-            return response.json();
-        }).then(data => {
-            let slicedData;
-            if(infinity){
-                slicedData = data;
-            }else{
-                slicedData = data.slice(0, timespan);
+        const slicedReversedData = slicedData.reverse()
+        slicedReversedData.forEach((row) => {
+            if (infinity) {
+                time.push(row.Date);
+            } else {
+                time.push(row.Time);
             }
-
-            const slicedReversedData = slicedData.reverse()
-            for (let i = 0; i < slicedReversedData.length; i++) {
-                if(infinity){
-                    time.push(slicedReversedData[i]['Date']);
-                }
-                else{
-                    time.push(slicedReversedData[i]['Time']);
-                }
-
-                t = slicedReversedData[i]['Temperature']
-                t2 = t.replace("C", "")
-                temp = t2.replace(",",".")
-
-                h = slicedReversedData[i]['Humidity']
-                f = h.replace(",",".")
-                humidity.push(parseFloat(f));
-                temperature.push(parseFloat(temp))
-            }
-
-            const maxTemp = temperature.reduce((a, b) => Math.max(a, b), -Infinity);
-            const maxHumidity = humidity.reduce((a, b) => Math.max(a, b), -Infinity);
-            const minTemp = Math.min(...temperature);
-            const minHumidity = Math.min(...humidity);
-
-            dataset = addData('Humidity', humidity, 'blue', 'black');
-            dataset2 = addData('Temperature', temperature, 'red', 'black');
-
-            drawHumidityChart(dataset, time, 'humidity','line', maxHumidity, minHumidity);
-            drawTemperatureChart(dataset2, time, 'temperature','line', maxTemp, minTemp);
-
-        }).catch(err => {
-            console.log(err);
+            temp = row.Temperature
+            console.log("temperature: ",temp)
+            hum = row['Humidity']
+            humidity.push(hum);
+            temperature.push(temp)
         });
+
+        const maxTemp = temperature.reduce((a, b) => Math.max(a, b), -Infinity);
+        const maxHumidity = humidity.reduce((a, b) => Math.max(a, b), -Infinity);
+        const minTemp = Math.min(...temperature);
+        const minHumidity = Math.min(...humidity);
+
+        dataset = addData('Humidity', humidity, 'blue', 'black');
+        dataset2 = addData('Temperature', temperature, 'red', 'black');
+
+        drawHumidityChart(dataset, time, 'humidity','line', maxHumidity, minHumidity);
+        drawTemperatureChart(dataset2, time, 'temperature','line', maxTemp, minTemp);
     }
 
     function addData(title, Data, bgcolor, bordercolor) {
